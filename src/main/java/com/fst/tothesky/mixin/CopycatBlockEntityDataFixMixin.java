@@ -1,6 +1,7 @@
 package com.fst.tothesky.mixin;
 
 import com.fst.tothesky.ToTheSky;
+import com.fst.tothesky.event.CopycatFixLedger;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
@@ -47,14 +48,27 @@ import java.util.Set;
  * </ul>
  *
  * <p>修复条件：material 为 {@code minecraft:air} 且对应物品是 {@code tothesky:} 注册项时，
- * 把 material 推导回该物品对应方块的默认 BlockState。修好后 material 不再是空气，
- * 后续加载不会重复触发。
+ * 把 material 推导回该物品对应方块的默认 BlockState。
+ *
+ * <p><b>每个区块只处理一次</b>：这是旧存档的一次性迁移，同一份数据检查一遍就够——修复
+ * 本身幂等，玩家之后怎么动这些方块与这里无关。于是每个区块首次加载时：先查
+ * {@link CopycatFixLedger}（维度级 SavedData，region 位图，O(1)），命中直接返回；
+ * 未命中则跑完上面那套扫描-修复，然后无条件落台账。此后该区块再怎么加载都不再进入扫描。
+ *
+ * <p>另外，修好的区块还必须真的落盘——本 mixin 改的是反序列化用的内存 NBT，区块若一直
+ * 没被改动就不会重写，磁盘上的坏数据会留着，而台账已经记成“处理过”了。所以改到东西时
+ * 顺带打上原版的 {@code shouldSave} 标签（read 见到它就 {@code setUnsaved(true)}，
+ * write 不回写该标签，只会多存一次）。
+ *
+ * <p>修复过程不写任何日志：这里每个区块加载都会经过，日志只会淹没正常输出。
+ * 单个方块实体修复抛异常时静默跳过，区块照常加载；该区块此时不落台账，下次加载再试。
  */
 @Mixin(ChunkSerializer.class)
 public class CopycatBlockEntityDataFixMixin {
 
     private static final String COPYCATS_NAMESPACE = "copycats";
     private static final String BLOCK_ENTITIES_KEY = "block_entities";
+    private static final String SHOULD_SAVE_KEY = "shouldSave";
     private static final String MATERIAL_DATA_KEY = "material_data";
     private static final String PROPERTIES_KEY = "properties";
     private static final String ID_KEY = "id";
@@ -72,10 +86,14 @@ public class CopycatBlockEntityDataFixMixin {
             return;
         }
 
-        ListTag blockEntities = tag.getList(BLOCK_ENTITIES_KEY, Tag.TAG_COMPOUND);
-        ToTheSky.LOGGER.info("[CopycatFix] Chunk {} loaded with {} block entities", pos, blockEntities.size());
+        CopycatFixLedger ledger = CopycatFixLedger.get(level);
+        if (ledger.isVisited(pos)) {
+            return;
+        }
 
+        ListTag blockEntities = tag.getList(BLOCK_ENTITIES_KEY, Tag.TAG_COMPOUND);
         boolean anyChanged = false;
+        boolean failed = false;
 
         for (int i = 0; i < blockEntities.size(); i++) {
             if (!(blockEntities.get(i) instanceof CompoundTag blockEntityTag)) {
@@ -90,26 +108,27 @@ public class CopycatBlockEntityDataFixMixin {
                 continue;
             }
 
-            ToTheSky.LOGGER.info("[CopycatFix] Found copycat block entity {} in chunk {}", id, pos);
-            boolean changed;
             try {
-                changed = patchCopycatBlockEntity(blockEntityTag);
-            } catch (Exception e) {
-                ToTheSky.LOGGER.error("[CopycatFix] Failed to patch copycat {} in chunk {}", id, pos, e);
-                continue;
-            }
-            if (changed) {
-                anyChanged = true;
-                ToTheSky.LOGGER.info("[CopycatFix] Patched copycat material data in chunk {} at block entity {}", pos, id);
+                anyChanged |= patchCopycatBlockEntity(blockEntityTag);
+            } catch (RuntimeException e) {
+                // 单个方块实体修不动就跳过：区块照常加载，其它方块实体继续处理
+                failed = true;
             }
         }
 
         if (anyChanged) {
-            ToTheSky.LOGGER.info("[CopycatFix] Patched copycat material data entries in chunk {}", pos);
+            // 改写只发生在内存 NBT 上；不把区块标脏，它可能一直不落盘，
+            // 而台账已经记成“处理过”→ 下次加载直接跳过，磁盘上的坏数据就永远修不掉了。
+            // shouldSave 是原版自带的机制：read 见到它就 setUnsaved(true)，
+            // 且 write 不回写该标签，因此只会多存一次，不会反复触发保存。
+            tag.putBoolean(SHOULD_SAVE_KEY, true);
+        }
+
+        // 出过异常就不落台账：否则这个区块被永久跳过，没修好的伪装板再也没机会修。
+        if (!failed) {
+            ledger.markVisited(pos);
         }
     }
-
-
 
     /**
      * 修复单个 copycat 方块实体的 NBT，支持单状态与多状态两种结构。
