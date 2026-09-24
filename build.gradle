@@ -211,8 +211,9 @@ tasks.named('processResources', ProcessResources).configure {
 
 // Forge 1.20.1 没有 mods.toml 的 mixin 入口：mixin 0.8.5 的 MixinPlatformAgentDefault 只从
 // 容器清单读 MixinConfigs。生产（jar）与 dev（build/resources/main 目录）两处都必须带上，
-// 否则 tothesky.mixins.json 不会被加载、所有 mixin 静默失效（游戏照常启动，注入全无）。
-def mixinConfigs = 'tothesky.mixins.json'
+// 否则 mixin 不会被加载、所有注入静默失效（游戏照常启动，注入全无）。
+// 逗号分隔可挂多个：tothesky.oelib.mixins.json 只在检测到 OELib 时应用（见 OelibMixinPlugin）。
+def mixinConfigs = 'tothesky.mixins.json,tothesky.oelib.mixins.json'
 
 // dev 运行加载的是目录而非 jar，Mixin 对目录容器读的是 <目录>/META-INF/MANIFEST.MF，
 // 因此这里补写一份与 jar 清单等价的清单。
