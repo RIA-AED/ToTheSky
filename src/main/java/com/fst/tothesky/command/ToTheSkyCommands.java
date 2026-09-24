@@ -5,6 +5,10 @@ import com.fst.tothesky.calendar.CalendarData;
 import com.fst.tothesky.calendar.CalendarEvent;
 import com.fst.tothesky.contact.LetterScheduler;
 import com.fst.tothesky.network.ModNetwork;
+import com.fst.tothesky.restore.RestoreLedger;
+import com.fst.tothesky.restore.RestoreManifest;
+import com.fst.tothesky.restore.RestoreService;
+import com.fst.tothesky.restore.RestoreTask;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
@@ -21,8 +25,12 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
 
 /**
  * {@code /tothesky} 命令树。
@@ -49,6 +57,13 @@ public final class ToTheSkyCommands {
     /** 重载节日信/生日信配置所需的权限等级（与 /reload 同级） */
     private static final int RELOAD_PERMISSION = 2;
 
+    /**
+     * 执行补偿所需的权限等级。
+     * <p>比 {@code /reload} 更高：补偿会往世界与玩家手里发实物，属于一次性的运维动作，
+     * 不该被普通管理员顺手执行。
+     */
+    private static final int RESTORE_PERMISSION = 3;
+
     /** 农历单月最多 30 天（大月 30、小月 29；闰月不参与换算） */
     private static final int LUNAR_MAX_DAY = 30;
 
@@ -73,7 +88,93 @@ public final class ToTheSkyCommands {
                                         .executes(context -> setBirthday(context, false))
                                         .then(Commands.argument("isnongli", BoolArgumentType.bool())
                                                 .executes(context -> setBirthday(context,
-                                                        BoolArgumentType.getBool(context, "isnongli")))))));
+                                                        BoolArgumentType.getBool(context, "isnongli")))))))
+                // 扫描器补偿清单的执行入口（见 tools/save-scanner）
+                .then(Commands.literal("restore")
+                        .requires(source -> source.hasPermission(RESTORE_PERMISSION))
+                        .executes(context -> restore(context, false))
+                        .then(Commands.literal("dry")
+                                .executes(context -> restore(context, true)))
+                        .then(Commands.literal("status")
+                                .executes(ToTheSkyCommands::restoreStatus)));
+    }
+
+    /**
+     * 启动扫描器补偿清单的执行。
+     *
+     * <p>默认读 {@code config/tothesky/restore.json}（由 {@code tools/save-scanner} 生成，拷进来即可）。
+     * {@code dry} 子命令只报告会做什么、不改动任何数据——<b>先在正式存档上跑 dry 是推荐流程</b>。
+     *
+     * <p><b>执行是跨 tick 的</b>：条目按时间预算切片处理（见 {@link RestoreTask}），
+     * 不会把服务器卡在一个 tick 里。小清单（几十条内）通常当场跑完、直接给出摘要；
+     * 大清单会立即返回并继续在后台推进，进度显示在 bossbar、完成时再通知触发者。
+     *
+     * <p>幂等：成功补偿的条目记在 {@code tothesky_restore_ledger}，重跑自动跳过，
+     * 因此「执行两次」不会发双份；失败条目可以改正清单后重跑补齐。
+     */
+    private static int restore(CommandContext<CommandSourceStack> context, boolean dryRun) {
+        CommandSourceStack source = context.getSource();
+        Path file = RestoreManifest.defaultFile();
+
+        if (!Files.isRegularFile(file)) {
+            source.sendFailure(Component.literal("[补偿] 找不到清单：" + file
+                    + "\n把 tools/save-scanner 生成的 restore.json 放到 config/tothesky/ 下"));
+            return 0;
+        }
+        MinecraftServer server = source.getServer();
+        if (RestoreTask.busy(server)) {
+            source.sendFailure(Component.literal("[补偿] 已有补偿任务在执行，请等它结束（或看 bossbar 进度）"));
+            return 0;
+        }
+        RestoreManifest manifest;
+        try {
+            manifest = RestoreManifest.load(file);
+        } catch (IOException | IllegalArgumentException e) {
+            source.sendFailure(Component.literal("[补偿] 清单无法读取：" + e.getMessage()));
+            ToTheSky.LOGGER.warn("[补偿] 清单读取失败：{}", e.getMessage());
+            return 0;
+        }
+
+        if (manifest.restorable().isEmpty()) {
+            source.sendSuccess(() -> Component.literal("[补偿] 清单里没有需要补偿的条目（共 "
+                    + manifest.entries().size() + " 条，均非 missing）"), false);
+            return Command.SINGLE_SUCCESS;
+        }
+
+        ServerPlayer requester = source.getEntity() instanceof ServerPlayer player ? player : null;
+        RestoreTask task = RestoreTask.start(server, manifest, dryRun, requester);
+
+        if (task.finished()) {
+            // 小清单：一片就做完了，直接给结果（完成消息已由 RestoreTask 发出）
+            return task.report().clean() ? Command.SINGLE_SUCCESS : 0;
+        }
+        int total = manifest.restorable().size();
+        source.sendSuccess(() -> Component.literal(String.format(
+                "[补偿] 已开始%s：共 %d 条，正在跨 tick 处理（进度见 bossbar，完成后会通知你）",
+                dryRun ? "演练" : "", total)), true);
+        return Command.SINGLE_SUCCESS;
+    }
+
+    /** 查看当前清单状态与台账规模（不动数据） */
+    private static int restoreStatus(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        Path file = RestoreManifest.defaultFile();
+        if (!Files.isRegularFile(file)) {
+            source.sendFailure(Component.literal("[补偿] 找不到清单：" + file));
+            return 0;
+        }
+        try {
+            RestoreManifest manifest = RestoreManifest.load(file);
+            RestoreLedger ledger = RestoreLedger.get(source.getServer());
+            source.sendSuccess(() -> Component.literal(String.format(
+                    "[补偿] 清单 %s（formatVersion=%d，生成于 %s）\n条目 %d，其中待补偿 %d\n台账已记录 %d 条",
+                    file.getFileName(), manifest.formatVersion(), manifest.generatedAt(),
+                    manifest.entries().size(), manifest.restorable().size(), ledger.size())), false);
+            return Command.SINGLE_SUCCESS;
+        } catch (IOException | IllegalArgumentException e) {
+            source.sendFailure(Component.literal("[补偿] 清单无法读取：" + e.getMessage()));
+            return 0;
+        }
     }
 
     private static int reloadLetters(CommandContext<CommandSourceStack> context) {

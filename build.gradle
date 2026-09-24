@@ -114,6 +114,18 @@ dependencies {
     implementation fg.deobf("contact:contact:1.2.3")
     // OELib：Contact 的库 mod（json5-java/lunar 以 jarjar 内嵌，无额外外部依赖）
     implementation fg.deobf("oelib:oelib:0.2.4.1")
+    // AE2：补偿功能需要它的官方存储 API（StorageCells/AEItemKey）。
+    // compileOnly + runtimeOnly：只在编译期与开发运行期需要，不打进本模组 jar；
+    // 生产环境由 mods/ 里的 AE2 提供，mods.toml 声明为 mandatory=false 软依赖。
+    compileOnly fg.deobf("appliedenergistics2:appliedenergistics2:15.2.11")
+    runtimeOnly fg.deobf("appliedenergistics2:appliedenergistics2:15.2.11")
+    // SophisticatedBackpacks / Core：补偿功能要把物品直接写回背包内容（其内容存在全局
+    // SavedData 里、按 contentsUuid 索引）。同样只编译期与开发运行期需要，不打进 jar；
+    // mods.toml 里 declared 为 mandatory=false 软依赖。
+    compileOnly fg.deobf("sophisticatedbackpacks:sophisticatedbackpacks:3.24.13.1433")
+    runtimeOnly fg.deobf("sophisticatedbackpacks:sophisticatedbackpacks:3.24.13.1433")
+    compileOnly fg.deobf("sophisticatedcore:sophisticatedcore:1.2.109.1271")
+    runtimeOnly fg.deobf("sophisticatedcore:sophisticatedcore:1.2.109.1271")
 
 
 

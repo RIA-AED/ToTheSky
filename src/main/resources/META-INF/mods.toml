@@ -109,6 +109,23 @@ description='''
     ordering="NONE"
     side="BOTH"
 
+# 仅「存档补偿」功能用到 AE2 的存储 API（往 ME 元件里写回物品）。
+# 软依赖：未安装时该功能降级跳过，模组其余部分照常工作。
+[[dependencies.${mod_id}]]
+    modId="ae2"
+    mandatory=false
+    versionRange="[15.2.11,)"
+    ordering="NONE"
+    side="BOTH"
+
+# 同上：补偿要把物品写回精妙背包的内容（内容在其全局 SavedData 里）。
+[[dependencies.${mod_id}]]
+    modId="sophisticatedbackpacks"
+    mandatory=false
+    versionRange="[3.24.13,)"
+    ordering="NONE"
+    side="BOTH"
+
 
 
 # 镰刀注册到 kaleidoscope_cookery 命名空间；AFTER 保证其先构造，
