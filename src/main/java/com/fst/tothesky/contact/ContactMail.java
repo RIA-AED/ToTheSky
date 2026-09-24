@@ -82,7 +82,8 @@ public final class ContactMail {
      * @param target 收件人昵称
      * @param date   投递日期（现实日期；今天或更早 = 立即投递）
      * @param style  明信片款式 id，取自 {@code data/<命名空间>/postcards/*.json}，未知款式会被拒绝
-     * @param text   明信片正文（{@code null} 视为空）
+     * @param text   明信片正文（{@code null} 视为空；可含换行 {@code \n}，客户端按换行分列显示——
+     *               NBT 里始终是单个字符串，投递格式没变）
      * @return 是否已排期
      */
     public static boolean sendPostcard(String target, LocalDate date, ResourceLocation style, String text) {

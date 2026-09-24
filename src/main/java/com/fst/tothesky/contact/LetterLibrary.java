@@ -34,6 +34,9 @@ import java.util.stream.Stream;
  * （见 {@link #save(String, JsonObject)}）——「往目录里手工丢新 json」本身不触发重读，改完要跑一次命令
  * 才生效（见 {@link #reload()}）。
  *
+ * <p>正文 {@code text} 是**字符串数组，每项一行**（单个字符串也接受，等价于只有一行的数组），
+ * 投递时按顺序用换行拼成一个字符串——格式细节见 {@link FestivalLetter}。
+ *
  * <p>目录只扫一层：子目录与非 {@code .json} 文件（编辑器临时文件、{@code .json.bak} 等）不会被读取。
  *
  * <p><b>按内容缓存</b>：加载路径（{@link #reload()}）同一文件内容没变就不重新解析——既省掉重复解析，
@@ -380,21 +383,27 @@ public final class LetterLibrary {
      */
     private static final String BIRTHDAY_LETTER = """
             {
-              "_comment": "生日信：文件名固定，日历里每条 type=birthday 的活动当天都发它（收件人 = 活动名 = 玩家昵称），当天过生日的每位玩家各收一份。改这里即可更换生日礼物，停用请把 enabled 改成 false。",
+              "_comment": "生日信：文件名固定，日历里每条 type=birthday 的活动当天都发它（收件人 = 活动名 = 玩家昵称），当天过生日的每位玩家各收一份。改这里即可更换生日礼物，停用请把 enabled 改成 false。text 是字符串数组，每项在明信片上一行。",
               "enabled": true,
               "type": "postcard",
               "style": "contact:spring_day",
-              "text": "祝${player}生日快乐！今天是${date}。"
+              "text": [
+                "祝${player}生日快乐！",
+                "今天是${date}。"
+              ]
             }
             """;
 
     private static final String POSTCARD_EXAMPLE = """
             {
-              "_comment": "示例：明信片（样式 + 正文）。信件不写收件人与日期——在日历里新建一个节日，把「绑定信件」填成本文件名（去掉 .json），当天这封信就发给全服每位玩家。enabled 改成 true 才会投递。${player} 会替换成收件人，${date} 会替换成投递当天的日期（yyyy-MM-dd）。",
+              "_comment": "示例：明信片（样式 + 正文）。信件不写收件人与日期——在日历里新建一个节日，把「绑定信件」填成本文件名（去掉 .json），当天这封信就发给全服每位玩家。enabled 改成 true 才会投递。${player} 会替换成收件人，${date} 会替换成投递当天的日期（yyyy-MM-dd）。text 是字符串数组，每项在明信片上一行（也可以写成单个字符串，那就只有一行）。",
               "enabled": false,
               "type": "postcard",
               "style": "contact:new_year_2023",
-              "text": "祝${player}节日快乐！今天是${date}。"
+              "text": [
+                "祝${player}节日快乐！",
+                "今天是${date}。"
+              ]
             }
             """;
 
@@ -412,13 +421,16 @@ public final class LetterLibrary {
 
     private static final String RED_PACKET_EXAMPLE = """
             {
-              "_comment": "示例：红包（内容物 + 祝福语），最多 1 件。${item} 只在红包里有效，会替换成内容物清单（物品显示名×数量）。",
+              "_comment": "示例：红包（内容物 + 祝福语），最多 1 件。${item} 只在红包里有效，会替换成内容物清单（物品显示名×数量）。text 是字符串数组，每项一行。",
               "enabled": false,
               "type": "red_packet",
               "items": [
                 { "item": "minecraft:diamond", "count": 8 }
               ],
-              "text": "祝${player}节日快乐！红包里是${item}。"
+              "text": [
+                "祝${player}节日快乐！",
+                "红包里是${item}。"
+              ]
             }
             """;
 }

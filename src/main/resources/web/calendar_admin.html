@@ -154,8 +154,9 @@ img.head { width: 20px; height: 20px; vertical-align: -4px; border-radius: 3px; 
       <button type="button" class="secondary" id="addItemBtn">＋ 添加物品</button>
     </div>
     <div class="full" id="textWrap">
-      <label for="letterText">正文 / 祝福语</label>
-      <input id="letterText" maxlength="512" placeholder="可用 ${player}（收件人）、${date}（投递日）；红包还可 ${item}">
+      <label for="letterText">正文 / 祝福语 <span class="hint">（一行一项，逐行显示在明信片上）</span></label>
+      <textarea id="letterText" rows="4" maxlength="2048" spellcheck="false"
+                placeholder="可用 ${player}（收件人）、${date}（投递日）；红包还可 ${item}"></textarea>
     </div>
     <div class="full" id="rawWrap" hidden>
       <label for="letterRawText">原始 JSON —— 这个文件现在解析不过去，直接改它（存前会在浏览器里先做一次语法检查）</label>
@@ -388,7 +389,7 @@ function fillLetterForm(letter) {
     $('letterEnabled').checked = r.enabled !== false;
     $('letterType').value = r.type || 'postcard';
     $('letterStyle').value = r.style || '';
-    $('letterText').value = r.text || '';
+    $('letterText').value = letterLines(r.text).join('\n');
     const items = Array.isArray(r.items) ? r.items : [];
     items.forEach(it => addItemRow(it.item, it.count));
   }
@@ -460,16 +461,34 @@ function letterBodyFromForm() {
     if (items.some(it => !it.item)) throw new Error('内容物里有空物品 id（填上，或点「移除」）');
     body.items = items;
   }
-  const text = $('letterText').value.trim();
   if (body.type === 'parcel') {
     // 包裹没有正文这个字段（表单里也不显示），所以**不动**文件里原有的 text：
     // 删掉是无声丢内容，留着只会多一条「text 已忽略」的提醒——后者才是诚实的
-  } else if (text) {
-    body.text = text;
   } else {
-    delete body.text;
+    const lines = textLines($('letterText').value);
+    if (lines.length) {
+      body.text = lines;
+    } else {
+      delete body.text;
+    }
   }
   return body;
+}
+
+/** 后端给的是逐行数组；旧写法（单个字符串）也认，按一行处理 */
+function letterLines(text) {
+  if (Array.isArray(text)) return text;
+  return typeof text === 'string' && text ? [text] : [];
+}
+
+/**
+ * 文本框 → 正文数组：一行一项。去掉行尾 CR、末尾空行（光标残留的空行不该变成信里的空行），
+ * 全空 = 没有正文（调用方据此删掉 text 字段）。
+ */
+function textLines(value) {
+  const lines = String(value == null ? '' : value).replace(/\r\n?/g, '\n').split('\n');
+  while (lines.length && lines[lines.length - 1] === '') lines.pop();
+  return lines.some(l => l.length) ? lines : [];
 }
 
 function renderLetters(letters) {
@@ -532,8 +551,9 @@ function contentCell(l) {
   if (l.items && l.items.length) {
     parts.push(l.items.map(it => escapeHtml(it.item) + '×' + it.count).join('、'));
   }
-  if (l.text) {
-    parts.push('<span class="muted">' + escapeHtml(l.text.length > 40 ? l.text.slice(0, 40) + '…' : l.text) + '</span>');
+  const text = letterLines(l.text).join(' / ');
+  if (text) {
+    parts.push('<span class="muted">' + escapeHtml(text.length > 40 ? text.slice(0, 40) + '…' : text) + '</span>');
   }
   return parts.length ? parts.join(' <br>') : '<span class="muted">—</span>';
 }

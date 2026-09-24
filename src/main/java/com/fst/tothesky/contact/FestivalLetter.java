@@ -36,12 +36,17 @@ import java.util.List;
  *   "type": "postcard",                                     // 必填：postcard / parcel / red_packet
  *   "style": "contact:new_year_2023",                       // type=postcard 必填：明信片款式
  *   "items": [{"item": "minecraft:cake", "count": 3}],      // type=parcel/red_packet 必填，count 默认 1
- *   "text": "祝${player}生日快乐！"                           // postcard/red_packet 可选：正文 / 红包祝福语
+ *   "text": ["祝${player}生日快乐！", "今天是${date}。"]         // postcard/red_packet 可选：正文/祝福语，每项一行
  * }
  * }</pre>
  *
  * <p>字段名与三类邮件一一对应：明信片 = 样式 + 正文，包裹 = 内容物（Contact 的包裹没有正文），
  * 红包 = 内容物 + 祝福语。
+ *
+ * <p><b>{@code text} 是字符串数组，每项一行</b>——投递时按顺序用换行（{@code \n}）拼成最终正文。
+ * 单个字符串仍然接受（旧写法，等价于只有一行的数组）。拼完的正文是**一个字符串**，原样交给
+ * Contact 的 {@code PostcardItem.setText}（NBT 里始终是单个 {@code Text} 字符串标签），
+ * 换行由客户端按原版换行规则渲染——所以投递格式没变，<b>老客户端不需要换模组</b>。
  *
  * <p><b>占位符</b>（只在 {@code text} 里生效，投递当天替换）：
  * <ul>
@@ -106,12 +111,11 @@ public final class FestivalLetter {
     private final ResourceLocation style;
     /** 仅 {@link Type#PARCEL} / {@link Type#RED_PACKET}，其它类型为空列表 */
     private final List<ItemStack> items;
-    /** 仅 {@link Type#POSTCARD} / {@link Type#RED_PACKET}；红包里即祝福语 */
-    @Nullable
-    private final String text;
+    /** 仅 {@link Type#POSTCARD} / {@link Type#RED_PACKET}；红包里即祝福语。每项一行，其它类型为空列表 */
+    private final List<String> text;
 
     private FestivalLetter(String id, Type type, @Nullable ResourceLocation style,
-                           List<ItemStack> items, @Nullable String text) {
+                           List<ItemStack> items, List<String> text) {
         this.id = id;
         this.type = type;
         this.style = style;
@@ -143,27 +147,33 @@ public final class FestivalLetter {
         return items;
     }
 
-    /** 正文 / 红包祝福语（可为 null） */
-    @Nullable
-    public String text() {
+    /** 正文 / 红包祝福语各行（没有正文时为空列表；行与行之间投递时用换行拼接） */
+    public List<String> text() {
         return text;
     }
 
     /**
-     * 渲染正文：替换 {@value #PLACEHOLDER_PLAYER}、{@value #PLACEHOLDER_DATE}；
-     * {@code forItems} 非 null 时再替换 {@value #PLACEHOLDER_ITEM}（即只有红包传内容物）。
+     * 渲染正文：每行替换 {@value #PLACEHOLDER_PLAYER}、{@value #PLACEHOLDER_DATE}，
+     * {@code forItems} 非 null 时再替换 {@value #PLACEHOLDER_ITEM}（即只有红包传内容物）；
+     * 最后按顺序用换行（{@code \n}）把各行拼成一整段（空列表 = 空串）。
      * <p>物品清单最后替换，物品名里万一有别的占位符也不会被二次替换。
      *
      * @param recipient 收件人昵称（节日绑定信是名单里的这一位，生日信是当天过生日的那位）
      */
     public String renderText(LocalDate today, String recipient, @Nullable List<ItemStack> forItems) {
-        String rendered = (text == null ? "" : text)
-                .replace(PLACEHOLDER_PLAYER, recipient)
-                .replace(PLACEHOLDER_DATE, DATE_FORMAT.format(today));
-        if (forItems != null) {
-            rendered = rendered.replace(PLACEHOLDER_ITEM, describeItems(forItems));
+        String renderedItems = forItems == null ? null : describeItems(forItems);
+        String date = DATE_FORMAT.format(today);
+        StringBuilder builder = new StringBuilder();
+        for (String line : text) {
+            if (builder.length() > 0) {
+                builder.append('\n');
+            }
+            String rendered = line
+                    .replace(PLACEHOLDER_PLAYER, recipient)
+                    .replace(PLACEHOLDER_DATE, date);
+            builder.append(renderedItems == null ? rendered : rendered.replace(PLACEHOLDER_ITEM, renderedItems));
         }
-        return rendered;
+        return builder.toString();
     }
 
     /**
@@ -241,7 +251,11 @@ public final class FestivalLetter {
                 notes.add(legacy + " 已废弃（信件不再自己排期，改由节日绑定或生日调用），已忽略");
             }
         }
-        String text = string(json, "text");
+        TextResult parsedText = parseText(json);
+        if (parsedText.error() != null) {
+            return invalid(parsedText.error());
+        }
+        List<String> text = parsedText.lines();
 
         ResourceLocation style = null;
         List<ItemStack> items = List.of();
@@ -261,7 +275,7 @@ public final class FestivalLetter {
                     return invalid(parsed.error());
                 }
                 items = parsed.items();
-                if (type == Type.PARCEL && text != null) {
+                if (type == Type.PARCEL && !text.isEmpty()) {
                     notes.add("包裹没有正文，text 已忽略");
                 }
             }
@@ -276,6 +290,38 @@ public final class FestivalLetter {
 
     /** {@link #parseItems} 的结果：内容物，或错因 */
     private record ItemsResult(List<ItemStack> items, @Nullable String error) {
+    }
+
+    /** {@link #parseText} 的结果：正文各行，或错因 */
+    private record TextResult(List<String> lines, @Nullable String error) {
+    }
+
+    /**
+     * 解析 {@code text}：<b>字符串数组，每项一行</b>；也接受单个字符串（旧写法，等价于只有一行的数组）。
+     * <p>缺省或空数组 = 没有正文；空串项是合法的空行。行间换行在 {@link #renderText} 拼接。
+     */
+    private static TextResult parseText(JsonObject json) {
+        JsonElement element = json.get("text");
+        if (element == null || element.isJsonNull()) {
+            return new TextResult(List.of(), null);
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            return new TextResult(List.of(element.getAsString()), null);
+        }
+        if (!element.isJsonArray()) {
+            return new TextResult(null,
+                    "text 必须是字符串数组（每项一行，如 [\"祝${player}生日快乐！\", \"今天是${date}。\"]），实为 " + element);
+        }
+        JsonArray array = element.getAsJsonArray();
+        List<String> lines = new ArrayList<>(array.size());
+        for (int i = 0; i < array.size(); i++) {
+            JsonElement child = array.get(i);
+            if (!child.isJsonPrimitive() || !child.getAsJsonPrimitive().isString()) {
+                return new TextResult(null, "text[" + i + "] 必须是字符串（每项一行）");
+            }
+            lines.add(child.getAsString());
+        }
+        return new TextResult(lines, null);
     }
 
     /** 解析 items；不合法返回错因 */

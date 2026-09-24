@@ -7,6 +7,8 @@ import com.fst.tothesky.contact.LetterLibrary;
 import com.fst.tothesky.contact.LetterScheduler;
 import com.fst.tothesky.web.WebHttp;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.resources.ResourceLocation;
@@ -36,7 +38,8 @@ import java.util.Optional;
  *       <b>编辑器以原文为准</b>，这样 {@code _comment} 之类手写的字段不会被网页抹掉；</li>
  *   <li>{@code valid} / {@code enabled} / {@code birthday}（是否那封固定的生日信）/
  *       {@code error}（不合法时的原因）/ {@code notes}（字段被忽略之类的提醒）；</li>
- *   <li>{@code type} / {@code style} / {@code items} / {@code text}——解析通过时才有值，供列表显示。</li>
+ *   <li>{@code type} / {@code style} / {@code items} / {@code text}——解析通过时才有值，供列表显示
+ *       （{@code text} 是**逐行数组**，编辑器按行回填文本框）。</li>
  * </ul>
  * 信件不描述「谁、什么时候收」，所以这里也没有 trigger/收件人/日期——触发一律在日历侧
  * （节日绑定或生日调用，见 {@code contact.LetterScheduler}）。
@@ -217,7 +220,7 @@ public final class LetterApiHandler {
 
         obj.addProperty("type", letter == null ? null : letter.type().id());
         obj.addProperty("style", letter == null || letter.style() == null ? null : letter.style().toString());
-        obj.addProperty("text", letter == null ? null : letter.text());
+        obj.add("text", letterText(letter));
         JsonArray items = new JsonArray();
         if (letter != null) {
             for (ItemStack stack : letter.items()) {
@@ -230,6 +233,18 @@ public final class LetterApiHandler {
         }
         obj.add("items", items);
         return obj;
+    }
+
+    /** 信件正文各行；解析不过去（{@code letter} 为 null）时给 JSON null，没有正文时给空数组 */
+    private static JsonElement letterText(@Nullable FestivalLetter letter) {
+        if (letter == null) {
+            return JsonNull.INSTANCE;
+        }
+        JsonArray lines = new JsonArray();
+        for (String line : letter.text()) {
+            lines.add(line);
+        }
+        return lines;
     }
 
     /** 文件原文可解析为 JSON 对象时返回它，否则 null（编辑器据此改用 {@code rawText} 兜底） */
