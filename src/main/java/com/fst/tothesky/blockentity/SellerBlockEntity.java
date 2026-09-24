@@ -184,18 +184,18 @@ public class SellerBlockEntity extends BlockEntity {
         ItemStack purchased = up.extractItem(goodSlot, 1, false);
         if (purchased.isEmpty()) {
             // 提取失败（竞争条件？），退款
-            refundCurrency(player, price);
+            refundCurrency(player, deducted);
             player.sendSystemMessage(Component.literal("售货机出货失败，已退款！"));
             return;
         }
 
         // 5. 给玩家物品
-        giveItemToPlayer(player, purchased);
         player.sendSystemMessage(Component.literal("你花费了" + price1 + "." + price2 + "Δ以购买"
                 + purchased.getHoverName().getString()));
+        giveItemToPlayer(player, purchased);
 
         // 6. 找零
-        int change = balance - price;
+        int change = deducted - price;
         refundCurrency(player, change);
 
         // 7. 给店主打款（经济系统命令占位）
@@ -204,7 +204,7 @@ public class SellerBlockEntity extends BlockEntity {
         var source = player.getServer().createCommandSourceStack();
         player.getServer().getCommands().performPrefixedCommand(
                 source,
-                "money give " + ownerName + " " + (price1 + price2 * 0.1));
+                "money give " + ownerName + " " + price1 + "." + price2);
     }
 
     // ---- 货币工具 ----
@@ -243,13 +243,12 @@ public class SellerBlockEntity extends BlockEntity {
             ItemStack stack = player.getInventory().getItem(i);
             if (stack.isEmpty() || stack.getItem() != com.fst.tothesky.registry.ModItems.DELTA_COIN.get()) continue;
             int take = Math.min(stack.getCount(), (remaining + 9) / 10); // 需要的币数（向上取整）
-            take = Math.min(take, stack.getCount());
             stack.shrink(take);
             remaining -= take * 10;
             if (stack.isEmpty()) player.getInventory().setItem(i, ItemStack.EMPTY);
         }
         // remaining > 0 表示没扣够（但前面已检查余额，不应发生）
-        return amount - Math.max(0, remaining);
+        return amount - remaining;
     }
 
     /**
