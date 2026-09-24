@@ -33,3 +33,12 @@ run/
 repo/
 libs/
 !**/src/**/repo/
+
+# 运行期日志（客户端/服务端产物；docs 下的历史日志导出同理）
+logs/
+docs/*.log.zip
+
+# 存档扫描器的生成产物与打包副本（源码见 tools/save-scanner/）
+tools/save-scanner/restore.json
+tools/save-scanner.zip
+
