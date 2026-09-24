@@ -18,6 +18,7 @@
   - 可食用馅料（苹果/面包/金苹果/甜菜汤等）：玩家真的吃下该馅料——食物值按馅料增加，金苹果给吸收+再生、腐肉给饥饿，甜菜汤返还碗，紫颂果等自定义 `finishUsingItem` 逻辑同样生效
   - 不可食用馅料（钻石等）：原样给到手中（背包满则掉落）
   - 带馅的饺子吃下后仍按旧 kjs 的 `dumpling_making.js` 包制流程得到的 NBT 生效
+- [ ] **Copycats+ 伪装板材质（`CopycatBlockEntityDataFixMixin`）**：旧存档里被 Crystal Clear 重映射过的伪装板（`consumedItem` 已是 `tothesky:xxx_glass_casing`、`material` 仍是 `minecraft:air` 那种）加载后**渲染出正确材质**而非空气；多状态（`material_data.properties` / `bottom`/`top` 命名键）整体只给第一个材质、其余位置也回填成型。每区块只处理一次（`data/tothesky_copycat_fix.dat` 记 region 位图），第二次进同一区块不再扫描；修复过程**无任何日志**（搜 `CopycatFix` 应为 0 条）
 - [ ] **已放置方块保留**：旧存档里的售货机/扭蛋机/披萨/拉面/酒坊机器/鸡尾酒杯，外观与位置完好（同名 remap 生效）
 - [ ] **披萨阶段方块**：存档里 `pizza_margarita2/3/4`、`pork_pizza2/3/4`、`apple_pizza2/3/4`（9 个阶段方块）显示为对应缺角模型；右键给切片并进入下一阶段（末阶段变空气）
 - [ ] **售货机/扭蛋机内容物**：打开旧存档的售货机，商品栏位、owner、价格（price1.price2）与已售数据还在
@@ -240,6 +241,7 @@
 - [ ] **exposure**：照片传送
 - [ ] **kaleidoscope_cookery**：镰刀（仅在 mod 加载时注册；userdev 不加载时跳过）
 - [ ] **create_confectionery**：缺失时（EffectStack.get）仅 WARN 不崩
+- [ ] **OELib 启动竞态（`NetworkAutoRegistrationRaceMixin`）**：OELib 0.2.4.1 的 `NetworkAutoRegistration.findAllAnnotatedPackets` 读 `Set.copyOf(BASE_PACKAGES)` 时不上锁，与 contact 构造器里的 `registerPacketScanPackage` 并发 → 开局随机 `ConcurrentModificationException`、`OELib (oelib) has failed to load correctly`、启动失败（OELib jar 未变也复现，见 09-16 起的历史崩溃报告）。补丁把那次复制放进集合自身的监视器。**验证方法：连续启动客户端 5~8 次**（该竞态约 50% 命中），全部进到主菜单、日志无 `ConcurrentModificationException` / `Failed to create mod instance. ModID: oelib`；日志应出现 `Mixing NetworkAutoRegistrationRaceMixin from tothesky.oelib.mixins.json into cc.sighs.oelib.network.api.NetworkAutoRegistration`。OELib 缺失时该配置整体跳过（`OelibMixinPlugin`），不影响启动
 - [ ] **软依赖总检**：依次去掉 kk/fd/create/ultramarine/exposure/kaleidoscope_cookery 各 mod，确认相关功能禁用但不崩溃
 
 ## 17. 日历系统（CalendarBlock + GUI + REST API）
