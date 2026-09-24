@@ -65,12 +65,19 @@ public final class MissingMappingEvents {
             "apple_pizza2", "apple_pizza3", "apple_pizza4"
     );
 
-    /** 已迁移的 kjs 物品注册名（纯物品，无方块） */
+    /**
+     * 已迁移的 kjs 物品注册名（纯物品，无方块；方块的 BlockItem 由 {@link #MIGRATED_BLOCKS} 顺带覆盖）。
+     * <p>
+     * 必须逐个列全：kjs 侧注册过、本 mod 也同名注册了的物品一旦漏配，旧存档里的那件物品
+     * 就会被 Forge 当缺失条目直接抹掉，而不是落到替代品上。
+     * 未迁移的 kjs 物品（{@code hemostix}、{@code event_item_1~5}）刻意<b>不</b>列在这里。
+     */
     private static final List<String> MIGRATED_ITEMS = List.of(
             // 酒类物品
             "wine_bottle", "incomplete_wine_bottle",
             // 比萨切片 / 生坯
             "sliced_pizza_margarita", "sliced_pork_pizza", "sliced_apple_pizza",
+            "cheese", "pizza_base", "raw_pizza_margarita", "raw_pork_pizza", "raw_apple_pizza",
             // 食物
             "bug_soup", "caramel_cod_soup", "pasta_with_chocolate", "digestion_pellow",
             "cod_burger", "fried_cod", "cut_cheese", "delta_porridge",
@@ -80,10 +87,24 @@ public final class MissingMappingEvents {
             "bean_curd", "cut_bean_curd", "spicy_bean_curd", "berry_bean_curd", "soy_sause_bottle", "soy_bean_oil",
             // 采血链
             "blood_bottle", "hemostix_plus",
-            // 事件/杂项物品
-            "deployer_lubricant", "harvest_the_night", "copter", "he_graphite_block",
+            // 事件/杂项物品（he_graphite 是物品，与同名的 he_graphite_block 方块是两件注册项）
+            "deployer_lubricant", "harvest_the_night", "copter", "he_graphite_block", "he_graphite",
+            "roller_ticket", "firecracker",
             // 鳕鱼堡 / 钻石产线
-            "bomb_cod_burger", "cod_burger", "fried_cod", "diamond_core", "uncomplete_diamond",
+            "bomb_cod_burger", "diamond_core", "uncomplete_diamond",
+            // 下界合金 / 魔女因子链
+            "impure_alloy_base", "raw_alloy_base", "incomplete_netherite_ingot",
+            "witch_factor", "activated_witch_factor",
+            // 三角币经济链
+            "delta_coin", "delta_coin_chip", "delta_dust",
+            // 图腾 / 石墨 / 晶体产线
+            "emerald_nugget", "raw_totem", "incomplete_totem", "fiber_mixture", "frother_mixture",
+            "small_crystal", "faded_small_crystal", "incomplete_tortilla",
+            // 可放置食物的物品形态（kjs 侧只注册了物品，无对应方块）
+            "salty_bean_curd", "sweet_bean_curd", "squid_festival", "phantom_shrimp",
+            "sunshine_cod", "raw_sunshine_cod", "drink659", "beef_over_rice",
+            // 魔法照片
+            "blue_magic_stone", "red_magic_stone", "yellow_magic_stone", "green_magic_stone",
             // 乐器
             "guitar", "piano", "drum_808", "empty_music_sheet", "music_sheet",
             // celestia 三连物品
