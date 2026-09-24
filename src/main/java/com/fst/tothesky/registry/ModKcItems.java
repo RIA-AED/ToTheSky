@@ -1,15 +1,13 @@
 package com.fst.tothesky.registry;
 
 import com.github.ysbbbbbb.kaleidoscopecookery.item.SickleItem;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Tier;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraftforge.common.ForgeTier;
 import net.minecraftforge.common.TierSortingRegistry;
-import net.minecraft.tags.BlockTags;
-import net.minecraft.tags.ItemTags;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
@@ -32,21 +30,30 @@ public final class ModKcItems {
             () -> new SickleItem(netheriteTier(), 0, -2.4f, new Item.Properties().fireResistant()));
 
     private static Tier diamondTier() {
-        return tier("diamond_sickle", 4, 3000, 9.0f, 3.0f, 10);
+        return unsortedTier(4, 3000, 9.0f, 3.0f, 10);
     }
 
     private static Tier netheriteTier() {
-        return tier("netherite_sickle", 4, 4000, 9.0f, 5.0f, 15);
+        return unsortedTier(4, 4000, 9.0f, 5.0f, 15);
     }
 
-    private static Tier tier(String name, int level, int uses, float speed, float attack, int enchantment) {
-        // kjs 直接 new ForgeTier(...)（未注册 TierSortingRegistry），这里保持一致——
-        // 注册到排序表可以让耐久条/挖掘等级与其他 Tier 正确比较，属纯增强。
-        ForgeTier tier = new ForgeTier(level, uses, speed, attack, enchantment,
+    /**
+     * 建造镰刀的 Tier：只 new 一个 ForgeTier，<b>不</b>注册进 {@link TierSortingRegistry}（与 kjs 时代一致）。
+     * <p>
+     * 曾在这里顺手注册过一次（想让挖掘等级参与排序），结果<b>原版镐挖不动铁/铜矿石</b>：
+     * {@code TierSortingRegistry.isCorrectTierForDrops} 的判定是「遍历所有<b>高于</b>本工具的 Tier，
+     * 方块只要落在它的 {@link Tier#getTag()} 里就判为挖不动」——{@code getTag()} 的语义是
+     * 「需要本 Tier 的方块」，不是「本 Tier 能挖的方块」。镰刀 Tier 填的是
+     * {@code minecraft:needs_stone_tool}，注册后又被排在钻石之后（下界合金之上），于是石/铁/钻石/下界合金镐
+     * 的判定都会撞上它——{@code needs_stone_tool} 里的铁矿石、铜矿石（含深板岩变种、铁块/铜块等）
+     * 对除镰刀外的所有镐都变成“挖不动、无掉落”。
+     * <p>
+     * 不注册时该 tag 无人读取，镰刀按原版 {@code isCorrectTierVanilla}（等级 4）判定，
+     * 挖掘能力与下界合金镐同级；一旦要注册，必须同时把 tag 换成与该 Tier 排序位置相符的门槛。
+     */
+    private static Tier unsortedTier(int level, int uses, float speed, float attack, int enchantment) {
+        return new ForgeTier(level, uses, speed, attack, enchantment,
                 BlockTags.NEEDS_STONE_TOOL, () -> Ingredient.of(Items.DIAMOND));
-        TierSortingRegistry.registerTier(tier, ResourceLocation.fromNamespaceAndPath("tothesky", name),
-                java.util.List.of(net.minecraft.world.item.Tiers.DIAMOND), java.util.List.of());
-        return tier;
     }
 
     private ModKcItems() {

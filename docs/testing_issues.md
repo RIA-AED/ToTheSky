@@ -33,6 +33,7 @@
 | D13 | `mechanical_chisel_table` 动力雕刻台 | 无功能、无 GUI |
 | D18 | 行商召唤 | 召唤后标记位待删除 |
 | D19 | `diamond_sickle` / `netherite_sickle` 镰刀 | 游戏中不存在（kaleidoscope_cookery 已加载仍未注册） |
+| D20 | 原版镐的挖掘等级（玩家反馈） | 石/铁/钻石/下界合金镐挖铁矿石、铜矿石、青金石矿、铁块、铜块（`minecraft:needs_stone_tool` 全部 43 个方块）无掉落；镰刀 Tier 注册进 `TierSortingRegistry` 且 `getTag()` 填成 `needs_stone_tool`，污染了所有比它低的工具的挖掘判定 |
 
 ### A4. 待删/待改
 | # | 条目 | 现象 |
@@ -78,3 +79,4 @@
 | 2026-09-09 | D19 | 已修 | `mods.toml` 补 `kaleidoscope_cookery` 可选依赖 `ordering="AFTER"`：此前构造顺序不定，`ModList.isLoaded` 在 kc 先构造时为 false，`KC_ITEMS` 未挂总线 |
 | 2026-09-09 | N1 | 已修 | 删除 `hemostix`：注册、`MissingMappingEvents` 映射项、两 lang 键、模型、贴图（plus 配方不引用它，已核） |
 | 2026-09-09 | N2 | 已修 | `harvest_the_night.json` parent → `minecraft:item/handheld` |
+| 2026-09-24 | D20 | 已修 | `ModKcItems` 去掉 `TierSortingRegistry.registerTier`（与 kjs 时代一致，只 new ForgeTier）。Forge 的判定是「方块落在**高于**本工具的 Tier 的 `getTag()` 里 → 挖不动」，而镰刀 Tier 被排在钻石之后、`getTag()` 又写成 `minecraft:needs_stone_tool`，于是石/铁/钻石/下界合金镐对那 43 个方块（铁/铜/青金石矿与铁块铜块等）全部判成无掉落。复现与验证：探针直接调用真实 `TierSortingRegistry.isCorrectTierForDrops`（tag 数据取自 1.20.1 官方服务端 jar），注册时 stone/iron/diamond 镐 iron_ore=false，去掉注册后恢复 true |

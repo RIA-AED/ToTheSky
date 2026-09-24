@@ -204,6 +204,7 @@
 - [ ] **镰刀范围收获** `SickleEvents`：主手 `kaleidoscope_cookery:*_sickle` 右键 → 以射线目标为中心 5×2×5 收割成熟作物+灌木（自动补种）；SWEEP 音效/动画；每次收获耐久 -count；冷却 10t
 - [ ] **钻石镰刀** `kaleidoscope_cookery:diamond_sickle`：挖掘 4、耐久 3000、速度 9、攻击 3、附魔 10
 - [ ] **下界合金镰刀** `kaleidoscope_cookery:netherite_sickle`：耐久 4000、攻击 5、附魔 15、防火
+- [ ] **镰刀 Tier 不得注册进 TierSortingRegistry（回归）**：石/铁/钻石/下界合金镐挖铁矿石、铜矿石、青金石矿、铁块、铜块（`minecraft:needs_stone_tool` 全部 43 个方块）都必须正常掉落；木镐挖它们则无掉落
 
 ## 14. 配方抽测
 
