@@ -149,7 +149,9 @@ dependencies {
 
 
 
-    // JEI / AppleSkin / Jade：仅 runClient 调试用，不进 compileClasspath，也不声明 mods.toml 依赖
+    // JEI：客户端集成需要编译期 API；运行时沿用客户端 mods/ 里的 JEI，不打进本模组 jar。
+    // AppleSkin / Jade：仅 runClient 调试用，不进 compileClasspath。
+    compileOnly fg.deobf("maven.modrinth:u6dRKJwZ:ruHSy16N") //JEI-1.20.1-15.20.0.127
     runtimeOnly fg.deobf("maven.modrinth:u6dRKJwZ:ruHSy16N") //JEI-1.20.1-15.20.0.127
     runtimeOnly fg.deobf("maven.modrinth:EsAfCjCV:XdXDExVF") //appleskin-forge-mc1.20.1-2.5.1
     runtimeOnly fg.deobf("maven.modrinth:nvQzSEkH:xJQHCmWJ") //Jade-1.20.1-11.13.3

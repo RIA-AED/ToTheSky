@@ -102,6 +102,14 @@ description='''
     ordering="NONE"
     side="BOTH"
 
+# 动力雕刻台的配方页是可选客户端集成：未安装 JEI 时插件类不会被加载。
+[[dependencies.${mod_id}]]
+    modId="jei"
+    mandatory=false
+    versionRange="[15.20.0,)"
+    ordering="AFTER"
+    side="CLIENT"
+
 [[dependencies.${mod_id}]]
     modId="contact"
     mandatory=false

@@ -1,21 +1,13 @@
 package com.fst.tothesky.block;
 
-import com.fst.tothesky.ToTheSky;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.BlockPlaceContext;
-import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
@@ -28,7 +20,6 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 
 import javax.annotation.Nullable;
 
@@ -47,6 +38,13 @@ public class MechanicalChiselTableBlock extends HorizontalDirectionalBlock imple
     public static final int MAX_ENERGY = 10000;
     public static final int ENERGY_COST = 100;
     public static final int MAX_OPERATIONS_PER_TICK = 10;
+    /**
+     * 单次凿刻的标称耗时（tick）。实际一 tick 内最多批量执行
+     * {@link #MAX_OPERATIONS_PER_TICK} 次，这里仅作为 JEI/提示中的制作时间基准。
+     */
+    public static final int CRAFT_TIME_TICKS = 1;
+    public static final float TICKS_PER_SECOND = 20.0F;
+    public static final float CRAFT_TIME_SECONDS = CRAFT_TIME_TICKS / TICKS_PER_SECOND;
 
 
     public MechanicalChiselTableBlock(VoxelShape shape, Properties properties) {
