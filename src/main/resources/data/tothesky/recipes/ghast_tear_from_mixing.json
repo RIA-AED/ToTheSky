@@ -2,13 +2,13 @@
   "type": "create:mixing",
   "ingredients": [
     {
-      "tag": "forge:vegetables/pepper"
+      "tag": "forge:crops/chilipepper"
     },
     {
-      "tag": "forge:vegetables/garlic"
+      "tag": "forge:crops/garlic"
     },
     {
-      "tag": "forge:vegetables/onion"
+      "tag": "forge:crops/onion"
     },
     {
       "item": "quark:soul_bead"

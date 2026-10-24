@@ -10,10 +10,10 @@
       "tag": "forge:eggs"
     },
     "B": {
-      "tag": "forge:foods/cooked_beef"
+      "tag": "forge:cooked_beef"
     },
     "O": {
-      "tag": "forge:foods/onion"
+      "tag": "forge:crops/onion"
     },
     "R": {
       "item": "farmersdelight:cooked_rice"

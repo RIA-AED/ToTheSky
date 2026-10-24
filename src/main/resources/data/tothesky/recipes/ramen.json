@@ -4,13 +4,13 @@
   "experience": 1.5,
   "ingredients": [
     {
-      "tag": "forge:foods/cooked_pork"
+      "tag": "forge:cooked_pork"
     },
     {
-      "tag": "forge:foods/cooked_pork"
+      "tag": "forge:cooked_pork"
     },
     {
-      "tag": "forge:foods/cooked_egg"
+      "tag": "forge:cooked_eggs"
     },
     {
       "item": "minecraft:dried_kelp"
