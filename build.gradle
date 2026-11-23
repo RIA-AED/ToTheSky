@@ -12,7 +12,6 @@ base {
     archivesName = mod_id
 }
 
-// Mojang 官方映射（ForgeGradle 6 用 official channel，不用 parchment 也行；参数名来自 official）
 minecraft {
     mappings channel: 'official', version: '1.20.1'
 
@@ -23,7 +22,6 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
-            // Create/Ponder 的 mixin refmap 在 dev 官方映射下需要重映射
             property 'mixin.env.remapRefMap', 'true'
             property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
 
@@ -49,8 +47,6 @@ minecraft {
     }
 }
 
-// 数据生成输出随资源打包（与 main 分支一致）；
-// build/mixin/ 下是 mixin AP 生成的 refmap（打包进 jar，mixins.json 引用）
 sourceSets.main.resources {
     srcDir 'src/generated/resources'
     srcDir layout.buildDirectory.dir('mixin')
@@ -60,19 +56,18 @@ sourceSets.main.resources {
 def isCI = System.getenv("CI") == "true"
 repositories {
     if (!isCI) {
-        // BMCLAPI 国内镜像，加速/恢复 Forge/Mojang/Maven Central 相关下载
+        // BMCLAPI 国内镜像
         maven { url = "https://bmclapi2.bangbang93.com/maven/" }
         maven { url = "https://bmclapi2.bangbang93.com/libraries/" }
-    }else{
+    } else {
         maven { url = "https://maven.minecraftforge.net/" }
         maven { url = "https://libraries.minecraft.net/" }
     }
     flatDir {
         dirs 'libs'
     }
-    // Create / Ponder / Flywheel 官方 Maven 在本地网络下连接受限，改走 libs/ 本地 jar
+    // Create Maven
     // maven { url = "https://maven.createmod.net" }
-    // 以下仓库对本地 jar/ Forge 组件解析不是必须的，且会触发被 reset 的请求
     // maven { url = "https://maven.ithundxr.dev/mirror" }
     // maven { url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/" }
     exclusiveContent {
@@ -82,7 +77,7 @@ repositories {
                 url = "https://api.modrinth.com/maven"
             }
         }
-        forRepositories(fg.repository) // fg.deobf 的 _mapped_ 变体由该仓库提供
+        forRepositories(fg.repository)
         filter {
             includeGroup "maven.modrinth"
         }
@@ -91,7 +86,6 @@ repositories {
 
 configurations.all {
     resolutionStrategy {
-        // eventbus 的 pom 使用动态版本，BMCLAPI 不镜像 maven-metadata.xml，强制固定版本
         force 'cpw.mods:modlauncher:10.0.9'
         force 'net.jodah:typetools:0.6.3'
     }
@@ -100,73 +94,41 @@ configurations.all {
 dependencies {
     minecraft "net.minecraftforge:forge:1.20.1-${forge_version}"
 
-    // Create 系：使用 libs/ 下已从 RiaFST 4 拉取的 jar（flatDir 按 artifactId-version[-classifier].jar 解析）
+    // Create
     implementation(fg.deobf("com.simibubi.create:create-${minecraft_version}:6.0.8:slim"))
     implementation fg.deobf("net.createmod.ponder:Ponder-Forge-${minecraft_version}:${ponder_version}")
     compileOnly fg.deobf("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}")
     runtimeOnly fg.deobf("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}")
     implementation fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}")
-    implementation fg.deobf("io.github.llamalad7:mixinextras-forge:0.4.1")
 
-    // 其他从 RiaFST 4 拉取的本地 mod（flatDir 按 artifactId-version.jar 解析）
+    implementation fg.deobf("io.github.llamalad7:mixinextras-forge:0.4.1")
     implementation fg.deobf("com.voxelutopia:ultramarine-1.20.1:0.5.1")
     implementation fg.deobf("maven.modrinth:v17FatAc:WrRGy5Ni") //Kaleidoscope Cookery 1.2.0
     implementation fg.deobf("maven.modrinth:R2OftAxM:AxgOboGq") //Farmer's Delight 1.2.4 - 1.20.1
     implementation fg.deobf("maven.modrinth:Xqu7vgqw:gio097V4") //Kitchen Karrot 0.6.4b
     implementation fg.deobf("maven.modrinth:YttyNOFA:nqWWS4zW") //Cultural Delights 0.16.1
-    // 镇守府：RiaFST 4 的 chinjufumod-[1.20.1]7.0.1.jar 已改名为 chinjufumod-7.0.1.jar（flatDir 不能解析方括号）
-    // TerraBlender 是 chinjufumod 的硬依赖，缺了 runClient 加载会失败
     implementation fg.deobf("chinjufumod:chinjufumod:7.0.1")
     implementation fg.deobf("maven.modrinth:kkmrDlKT:oCGyhKcY") //TerraBlender 3.0.1.6
-    // Create Confectionery：RiaFST 4 的 create-confectionery1.20.1_v1.1.3.jar 已改名为 create_confectionery-1.1.3.jar
     implementation fg.deobf("maven.modrinth:WPE5gRs9:3AaYpdLZ") //Create Confectionery 1.1.3
-    // Create Big Cannons：RiaFST 4 的 createbigcannons-5.11.1-mc.1.20.1-forge.jar 已改名为 createbigcannons-5.11.1.jar
-    // Ritchie's Projectile Lib 是 CBC 的硬依赖，缺了 runClient 加载会失败
     implementation fg.deobf("maven.modrinth:GWp4jCJj:7R7VwQnl") //Create Big Cannons 5.11.1
     implementation fg.deobf("maven.modrinth:B3pb093D:PdGBsNte") //Ritchie's Projectile Library 2.1.1
-    // Nether's Delight：RiaFST 4 的 nethersdelight-1.20.1-4.0.jar（依赖 farmersdelight，已接入）
     implementation fg.deobf("maven.modrinth:Vv0RM7WN:MTDQhZd2") //Nether's Delight 4.0
-    // Create Crafts & Additions：RiaFST 4 的 createaddition-1.20.1-1.3.3.jar（依赖 create，已接入）
     implementation fg.deobf("maven.modrinth:kU1G12Nn:9LgyB6Yb") //createaddition-forge-1.20.1-1.3.3
-    // Contact（往来）：RiaFST 4 的 Contact-forge-1.2.3.jar，硬依赖 oelib（0.1.3+）
     implementation fg.deobf("maven.modrinth:1Oyfrkxg:bGdlDxEX") //Contact 1.2.3
-    // OELib：Contact 的库 mod（json5-java/lunar 以 jarjar 内嵌，无额外外部依赖）
     implementation fg.deobf("maven.modrinth:7ODqOXka:3ZN7sdQJ") //OELib 0.2.4.1
-    // Builders Crafts & Additions（buildersaddition）：RiaFST 3 的 buildersaddition-1.20.1-20230928a.jar，
-    // 沿用原名（flatDir 按 artifactId-version.jar 解析，artifactId 含 -1.20.1）。无内嵌 jarjar 依赖。
     implementation fg.deobf("maven.modrinth:jA6GVA7Y:CUekg1Bv") //Builders Crafts & Additions 20230928a
-    // AE2：补偿功能需要它的官方存储 API（StorageCells/AEItemKey）。
-    // compileOnly + runtimeOnly：只在编译期与开发运行期需要，不打进本模组 jar；
-    // 生产环境由 mods/ 里的 AE2 提供，mods.toml 声明为 mandatory=false 软依赖。
     compileOnly fg.deobf("maven.modrinth:XxWD5pD3:kF3whRqC") //Applied Energistics 2 15.2.11
     runtimeOnly fg.deobf("maven.modrinth:XxWD5pD3:kF3whRqC") //Applied Energistics 2 15.2.11
-    // SophisticatedBackpacks / Core：补偿功能要把物品直接写回背包内容（其内容存在全局
-    // SavedData 里、按 contentsUuid 索引）。同样只编译期与开发运行期需要，不打进 jar；
-    // mods.toml 里 declared 为 mandatory=false 软依赖。
     compileOnly fg.deobf("maven.modrinth:TyCTlI4b:VHspHq6R") //SophisticatedBackpacks 3.24.13.1433
     runtimeOnly fg.deobf("maven.modrinth:TyCTlI4b:VHspHq6R") //SophisticatedBackpacks 3.24.13.1433
     compileOnly fg.deobf("maven.modrinth:nmoqTijg:gQBUUjar") //SophisticatedCore 1.2.109.1271
     runtimeOnly fg.deobf("maven.modrinth:nmoqTijg:gQBUUjar") //SophisticatedCore 1.2.109.1271
-
-
-
-
-
-    // JEI：客户端集成需要编译期 API；运行时沿用客户端 mods/ 里的 JEI，不打进本模组 jar。
-    // AppleSkin / Jade：仅 runClient 调试用，不进 compileClasspath。
     compileOnly fg.deobf("maven.modrinth:u6dRKJwZ:ruHSy16N") //JEI-1.20.1-15.20.0.127
     runtimeOnly fg.deobf("maven.modrinth:u6dRKJwZ:ruHSy16N") //JEI-1.20.1-15.20.0.127
     runtimeOnly fg.deobf("maven.modrinth:EsAfCjCV:XdXDExVF") //appleskin-forge-mc1.20.1-2.5.1
     runtimeOnly fg.deobf("maven.modrinth:nvQzSEkH:xJQHCmWJ") //Jade-1.20.1-11.13.3
-
-
-
-
 }
 
-// Mixin 注解处理器：生成 official→SRG refmap（生产 obf 环境解析 @Inject 目标必需）
-// build/createSrgToMcp/output.srg 是 ForgeGradle 6 生成的 TSrg v1（CL/FD/MD 行），
-// mixin 0.8.5 AP 以 "srg:" 环境名消费它，输出 refmap 到 build/mixin/
 configurations {
     mixinProcessor
 }
@@ -183,16 +145,9 @@ tasks.withType(JavaCompile).configureEach {
     if (name == 'compileJava') {
         options.annotationProcessorPath = configurations.mixinProcessor
         options.compilerArgs += [
-                // mappingTypes=tsrg：让 MCP 服务让位、FG3 服务（TSrg2 解析）接管 searge key
                 "-AmappingTypes=tsrg",
-                // FG3 服务：TSrg2 格式，left=official（源码名）right=searge（运行时 SRG 名）
                 "-AreobfTsrgFile=${layout.buildDirectory.file('createMcpToSrg/output.tsrg').get().asFile.absolutePath}",
                 "-AoutRefMapFile=${layout.buildDirectory.file('mixin/tothesky.refmap.json').get().asFile.absolutePath}",
-                // 目标不是原版类（如 Create 的 ChainConveyorBlockEntity）时，AP 在 tsrg 里查不到
-                // 该方法的 obf 映射，会以 Kind.ERROR 报 NO_OBFDATA_FOR_TARGET / FOR_METHOD 并中断编译。
-                // mod 类在生产环境同样不混淆（只有原版成员被 SRG 化），refmap 里本来就不需要这些条目，
-                // 故降级为 NOTE：编译通过且日志仍能看到未映射的 mod 目标。
-                // 目标写错仍会被兜住——mixins.json 的 defaultRequire:1 会让游戏在加载期直接失败。
                 "-AMSG_NO_OBFDATA_FOR_TARGET=note",
                 "-AMSG_NO_OBFDATA_FOR_METHOD=note"
         ]
@@ -201,18 +156,10 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.named('compileJava') {
     dependsOn 'createMcpToSrg'
-    // refmap 是 mixin AP 在编译期写出的文件，必须声明为任务输出。否则：
-    //   1) 构建缓存命中时只恢复 classes，refmap 不恢复（clean 后缓存命中 → build/mixin 空）；
-    //   2) 文件被删掉后 UP-TO-DATE 也不会重建。
-    // 两种情况下 mixins.json 里 "refmap" 指向的文件都不进 jar，
-    // 生产（SRG）环境注入原版方法时会解析不到目标——正是本仓库最怕的「mixin 静默失效」。
     outputs.file(layout.buildDirectory.file('mixin/tothesky.refmap.json'))
 }
 
-// mods.toml 中的 ${} 占位符在 processResources 展开（ForgeGradle 6 无独立模板任务）
 tasks.named('processResources', ProcessResources).configure {
-    // 资源要收 build/mixin 下的 refmap（见 sourceSets.main.resources 的 srcDir），
-    // 而它由 compileJava 的 AP 产出——不声明依赖时两者顺序未定义。
     dependsOn 'compileJava'
     var replaceProperties = [
             minecraft_version      : minecraft_version,
@@ -232,14 +179,8 @@ tasks.named('processResources', ProcessResources).configure {
     }
 }
 
-// Forge 1.20.1 没有 mods.toml 的 mixin 入口：mixin 0.8.5 的 MixinPlatformAgentDefault 只从
-// 容器清单读 MixinConfigs。生产（jar）与 dev（build/resources/main 目录）两处都必须带上，
-// 否则 mixin 不会被加载、所有注入静默失效（游戏照常启动，注入全无）。
-// 逗号分隔可挂多个：tothesky.oelib.mixins.json 只在检测到 OELib 时应用（见 OelibMixinPlugin）。
 def mixinConfigs = 'tothesky.mixins.json,tothesky.oelib.mixins.json'
 
-// dev 运行加载的是目录而非 jar，Mixin 对目录容器读的是 <目录>/META-INF/MANIFEST.MF，
-// 因此这里补写一份与 jar 清单等价的清单。
 var writeDevMixinManifest = tasks.register('writeDevMixinManifest') {
     var manifestFile = layout.buildDirectory.file('resources/main/META-INF/MANIFEST.MF')
     outputs.file(manifestFile)
@@ -254,7 +195,6 @@ tasks.named('processResources', ProcessResources).configure {
 }
 
 tasks.named('jar', Jar).configure {
-    // dev 用的那份清单只服务目录加载，不进 jar，避免归档里出现重复的清单条目。
     exclude 'META-INF/MANIFEST.MF'
     manifest {
         attributes([
@@ -285,15 +225,6 @@ publishing {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    // 1.20.1 分支面向 Java 17：显式钉死字节码版本。
-    // 本分支自 64df0b8 起没有任何 Java 版本设置（迁移时删掉了 NeoForge 的 toolchain 21 却忘了补 17），
-    // javac 于是按 Gradle 守护进程的 JDK 出字节码——本机是 JDK 21 → class file v65，
-    // 而 dev 客户端跑在 JDK 17（D:\Program Files\Java\jdk-17）上，任何**延迟加载**的类
-    // 都会 UnsupportedClassVersionError 崩客户端。踩中的就是右键：
-    // ForgeHooks.onRightClickBlock → ModGameEvents.onRightClickBlock:46 → 首次加载 CocktailHelper，
-    // 表现成「右键方块（含日历）没反应 / 客户端崩溃」。
-    // release 而非 toolchain：不需要额外发现/下载 JDK 17，且顺带把编译期 API 面限制在 17，
-    // 防止误用 18+ 的 API 在 17 运行时变成 NoSuchMethodError。
     options.release = 17
 }
 
