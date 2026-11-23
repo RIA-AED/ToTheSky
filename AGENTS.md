@@ -8,7 +8,6 @@
 ## 项目概述
 ToTheSky（`tothesky`）是作者 RiaAED 为 RiaFST 服务器开发的核心模组——「一点点混沌，很多的乐趣」。本分支基于 Minecraft 1.20.1 和 Forge，包含自定义物品、方块、配方、交互功能及其他模组的集成。
 
-许可证：保留所有权利（`TEMPLATE_LICENSE.txt` 中的 MIT 许可证仅覆盖 NeoForged MDK 模板本身，不适用于模组本体）。
 
 ## 构建与依赖
 - **版本**：Minecraft 1.20.1、Forge 47.4.10、Create 6.0.8；具体配置以 `gradle.properties` 与 `build.gradle` 为准。
