@@ -150,7 +150,8 @@ public final class ModBlocks {
     public static final RegistryObject<Block> STREETLIGHT =
             BLOCKS.register("streetlight", () -> new com.fst.tothesky.block.StreetlightBlock(
                     BlockBehaviour.Properties.of().sound(SoundType.METAL).strength(2.0f)
-                            .requiresCorrectToolForDrops().noOcclusion().lightLevel(state -> 15)));
+                            .requiresCorrectToolForDrops().noOcclusion()
+                            .lightLevel(state -> state.getValue(com.fst.tothesky.block.StreetlightBlock.LIGHT_LEVEL))));
 
     // ---------------- 装饰 ----------------
     public static final RegistryObject<Block> CANDLE_STICK =

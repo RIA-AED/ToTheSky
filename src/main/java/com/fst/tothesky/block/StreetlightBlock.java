@@ -2,8 +2,12 @@ package com.fst.tothesky.block;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
@@ -14,7 +18,9 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -23,6 +29,7 @@ import org.jetbrains.annotations.Nullable;
 /** Floor-standing lantern, or a wall-mounted lantern with the supplied mounting bracket. */
 public class StreetlightBlock extends HorizontalDirectionalBlock {
     public static final BooleanProperty WALL_MOUNTED = BooleanProperty.create("wall_mounted");
+    public static final IntegerProperty LIGHT_LEVEL = IntegerProperty.create("light_level", 0, 15);
     private static final VoxelShape FLOOR_SHAPE = Shapes.or(
             Block.box(6, 0, 6, 10, 4, 10),
             Block.box(1.5, 3, 2.5, 14.5, 14, 13.5),
@@ -39,12 +46,27 @@ public class StreetlightBlock extends HorizontalDirectionalBlock {
 
     public StreetlightBlock(Properties properties) {
         super(properties);
-        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(WALL_MOUNTED, false));
+        registerDefaultState(stateDefinition.any().setValue(FACING, Direction.NORTH)
+                .setValue(WALL_MOUNTED, false).setValue(LIGHT_LEVEL, 15));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, WALL_MOUNTED);
+        builder.add(FACING, WALL_MOUNTED, LIGHT_LEVEL);
+    }
+
+    @Override
+    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
+                                 InteractionHand hand, BlockHitResult hitResult) {
+        if (!level.isClientSide) {
+            int lightLevel = switch (state.getValue(LIGHT_LEVEL)) {
+                case 15 -> 10;
+                case 10 -> 0;
+                default -> 15;
+            };
+            level.setBlock(pos, state.setValue(LIGHT_LEVEL, lightLevel), Block.UPDATE_ALL);
+        }
+        return InteractionResult.sidedSuccess(level.isClientSide);
     }
 
     @Override

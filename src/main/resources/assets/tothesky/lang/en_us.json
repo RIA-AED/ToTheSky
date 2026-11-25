@@ -1,6 +1,7 @@
 {
   "block.tothesky.streetlight": "Streetlight",
   "tooltip.tothesky.streetlight.0": "作者：Centurion",
+  "tooltip.tothesky.streetlight.1": "Right-click to switch brightness",
   "block.tothesky.rolling_stone": "Rolling Stone",
   "block.tothesky.rolling_stone.desc": "The Rolling Stones - Gimme Shelter",
   "entity.tothesky.rolling_stone": "Rolling Stone",

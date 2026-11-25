@@ -339,7 +339,7 @@ public final class ModItems {
 
     public static final RegistryObject<TooltipBlockItem> STREETLIGHT_ITEM =
             ITEMS.register("streetlight", () -> new TooltipBlockItem(ModBlocks.STREETLIGHT.get(),
-                    new Item.Properties(), "streetlight", 1));
+                    new Item.Properties(), "streetlight", 2));
 
     // ---------------- 装饰方块物品 ----------------
     public static final RegistryObject<BlockItem> CANDLE_STICK_ITEM =
